@@ -136,7 +136,7 @@ function render(_alpha: number): void {
 
   // Draw minimap in screen-space (top-right corner)
   const dpr2 = window.devicePixelRatio || 1;
-  drawMinimap(ctx, grid, tileColors, player, canvas.width / dpr2, canvas.height / dpr2);
+  drawMinimap(ctx, grid, tileColors, player, canvas.width / dpr2);
 }
 
 function updateHud(): void {

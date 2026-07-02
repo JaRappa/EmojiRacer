@@ -4,7 +4,7 @@
  */
 
 import { CarState } from '../game/car';
-import { TILE_SIZE, COLOR_GRASS, COLOR_ROAD, COLOR_WALL } from '../game/constants';
+import { TILE_SIZE, COLOR_GRASS } from '../game/constants';
 
 /** Minimap display size in CSS pixels. */
 const MINIMAP_SIZE = 180;
@@ -23,7 +23,6 @@ export function drawMinimap(
   tileColors: Record<string, string>,
   player: CarState,
   canvasW: number,
-  canvasH: number,
 ): void {
   const rows = grid.length;
   const cols = grid[0]?.length ?? 1;
