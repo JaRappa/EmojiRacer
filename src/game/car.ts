@@ -154,8 +154,43 @@ export function resolveWallCollision(
       if (result.hit) {
         car.x += result.pushX;
         car.y += result.pushY;
-        car.speed *= -0.3;            // reflected bounce at 30% magnitude
-        car.angularVelocity *= 0.2;  // kill rotation on impact
+
+        // ── Wall normal from push direction ────────────────────
+        const pushLen = Math.sqrt(result.pushX * result.pushX + result.pushY * result.pushY);
+        if (pushLen > 0.001) {
+          const nx = result.pushX / pushLen; // wall normal (points away from wall)
+          const ny = result.pushY / pushLen;
+
+          // Car's forward direction
+          const fx = Math.cos(car.heading);
+          const fy = Math.sin(car.heading);
+
+          // How head-on is the collision? 1 = perpendicular hit, 0 = parallel scrape
+          const dot = fx * nx + fy * ny; // negative when moving into the wall
+          const impact = Math.abs(Math.min(0, dot)); // clamped 0..1
+
+          // ── Speed: lose 15% (scrape) to 55% (head-on) ──────
+          car.speed *= 0.85 - impact * 0.4;
+
+          // ── Heading: reflect off wall, blend toward deflection ──
+          if (dot < 0) {
+            // Reflect forward vector: f' = f - 2(f·n)n
+            const rfx = fx - 2 * dot * nx;
+            const rfy = fy - 2 * dot * ny;
+            const reflected = Math.atan2(rfy, rfx);
+
+            // Blend: light scrape barely redirects; head-on bounces strongly
+            const blend = 0.2 + impact * 0.6; // 0.2 .. 0.8
+            let diff = reflected - car.heading;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            car.heading += diff * blend;
+          }
+
+          // ── Angular velocity: reduce but keep some spin ─────
+          car.angularVelocity *= 0.3 + impact * 0.1; // keep 30–40%
+        }
+
         collided = true;
       }
     }
