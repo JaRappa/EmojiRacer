@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" width="72" height="72">
+  <!-- Simple race car placeholder for Twemoji 🏎️ (U+1F3CE) -->
+  <!-- Replace with official Twemoji SVG before shipping -->
+  <rect x="10" y="30" width="52" height="22" rx="6" fill="#e74c3c"/>
+  <rect x="14" y="24" width="28" height="10" rx="4" fill="#c0392b"/>
+  <!-- Windshield -->
+  <rect x="36" y="26" width="12" height="6" rx="2" fill="#85c1e9"/>
+  <!-- Wheels -->
+  <circle cx="24" cy="52" r="8" fill="#333"/>
+  <circle cx="48" cy="52" r="8" fill="#333"/>
+  <circle cx="24" cy="52" r="4" fill="#666"/>
+  <circle cx="48" cy="52" r="4" fill="#666"/>
+  <!-- Spoiler -->
+  <rect x="54" y="28" width="10" height="4" rx="2" fill="#2c3e50"/>
+  <!-- Stripe -->
+  <rect x="10" y="38" width="52" height="6" fill="#fff" opacity="0.3"/>
+</svg>
