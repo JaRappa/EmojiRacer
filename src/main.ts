@@ -10,6 +10,7 @@ import { drawSprite, preloadSprites, getSpriteBounds } from './engine/sprites';
 import { createCar, simulateCar, resolveWallCollision, CarState } from './game/car';
 import { PLAYER_EMOJI, MAX_SPEED, EMOJI_SIZE, TILE_SIZE, COLOR_GRASS, COLOR_ROAD, COLOR_WALL } from './game/constants';
 import { drawMinimap } from './ui/minimap';
+import { createJoystick, isTouchDevice, JoystickHandle, JoystickInput } from './ui/joystick';
 
 // ─── Globals ────────────────────────────────────────────────────────
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -19,6 +20,7 @@ const hud = document.getElementById('hud')!;
 let player: CarState;
 let camera: { state: CameraState; update: (tx: number, ty: number, speed: number, maxSpeed: number, dt: number) => void };
 let input: InputState = { throttle: 0, steer: 0 };
+let joystick: JoystickHandle | null = null;
 
 // FPS tracking
 let currentFps = 0;
@@ -137,6 +139,11 @@ function render(_alpha: number): void {
   // Draw minimap in screen-space (top-right corner)
   const dpr2 = window.devicePixelRatio || 1;
   drawMinimap(ctx, grid, tileColors, player, canvas.width / dpr2);
+
+  // Draw virtual joystick (touch devices only)
+  if (joystick) {
+    joystick.render(ctx);
+  }
 }
 
 function updateHud(): void {
@@ -171,8 +178,17 @@ async function main(): Promise<void> {
   camera.state.x = player.x;
   camera.state.y = player.y;
 
-  // Init input
-  initInput(canvas, (s) => { input = s; });
+  // Init input — disable built-in touch controls if joystick is available
+  const onTouch = isTouchDevice();
+  initInput(canvas, (s) => { input = s; }, { disableTouch: onTouch });
+
+  // Init joystick on touch devices
+  if (onTouch) {
+    joystick = createJoystick(canvas, (j: JoystickInput) => {
+      // Merge joystick input: joystick throttle/steer overrides keyboard
+      input = { throttle: j.throttle, steer: j.steer };
+    });
+  }
 
   // FPS tracking
   let fpsFrameCount = 0;

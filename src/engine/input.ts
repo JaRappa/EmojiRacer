@@ -10,7 +10,16 @@ export interface InputState {
 
 type InputCallback = (state: InputState) => void;
 
-export function initInput(canvas: HTMLCanvasElement, onInput: InputCallback): () => void {
+export interface InitInputOptions {
+  disableTouch?: boolean; // When true, no touch listeners are added (joystick handles mobile)
+}
+
+export function initInput(
+  canvas: HTMLCanvasElement,
+  onInput: InputCallback,
+  options: InitInputOptions = {},
+): () => void {
+  const { disableTouch = false } = options;
   const keys = new Set<string>();
 
   function updateState(): InputState {
@@ -102,9 +111,12 @@ export function initInput(canvas: HTMLCanvasElement, onInput: InputCallback): ()
 
   window.addEventListener('keydown', onKeyDown);
   window.addEventListener('keyup', onKeyUp);
-  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-  canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-  canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+
+  if (!disableTouch) {
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+  }
 
   return () => {
     window.removeEventListener('keydown', onKeyDown);
