@@ -1,5 +1,5 @@
 # Emoji Racer — Engineering Handoff Plan
-
+ 
 **Version:** 1.0 · **Date:** 2026-07-02 · **Status:** Ready for implementation
 
 This document is a complete, self-contained specification for building Emoji Racer. An implementer (human or AI coding agent) should be able to build the singleplayer game from this document alone, without further product decisions. Decisions already made are marked **[DECIDED]**; anything genuinely open is in the Decision Log at the end.
