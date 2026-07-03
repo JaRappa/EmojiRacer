@@ -1,6 +1,6 @@
 /**
  * Emoji Racer — bootstrap & game runner.
- * Phase 0: Drives 🏎️ on an empty field with follow/zoom camera, FPS counter.
+ * Phase 1: Menu system + sandbox free-drive.
  */
 
 import { startLoop } from './engine/loop';
@@ -11,11 +11,13 @@ import { createCar, simulateCar, resolveWallCollision, CarState } from './game/c
 import { PLAYER_EMOJI, MAX_SPEED, EMOJI_SIZE, TILE_SIZE, COLOR_GRASS, COLOR_ROAD, COLOR_WALL } from './game/constants';
 import { drawMinimap } from './ui/minimap';
 import { createJoystick, isTouchDevice, JoystickHandle, JoystickInput } from './ui/joystick';
+import { initScreens, getScreen, Screen, navigate } from './ui/screens';
 
 // ─── Globals ────────────────────────────────────────────────────────
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const hud = document.getElementById('hud')!;
+const backToMenuBtn = document.getElementById('back-to-menu') as HTMLButtonElement;
 
 let player: CarState;
 let camera: { state: CameraState; update: (tx: number, ty: number, speed: number, maxSpeed: number, dt: number) => void };
@@ -153,50 +155,28 @@ function updateHud(): void {
 }
 
 // ─── Main ───────────────────────────────────────────────────────────
-async function main(): Promise<void> {
-  resize();
 
-  // Preload sprites
-  await preloadSprites([PLAYER_EMOJI]);
+let stopGameLoop: (() => void) | null = null;
+let gameRunning = false;
 
-  // Compute hitbox from actual sprite content
-  const bounds = getSpriteBounds(PLAYER_EMOJI);
+function startGame(): void {
+  if (gameRunning) return;
+  gameRunning = true;
 
-  // Create player car at center of field
-  player = createCar({
-    startX: (FIELD_COLS / 2) * TILE_SIZE,
-    startY: (FIELD_ROWS / 2) * TILE_SIZE,
-    startHeading: 0,
-    halfWidth: bounds?.halfWidth,
-    halfLength: bounds?.halfLength,
-  });
+  // Show canvas and back button, hide HUD (will update from simulation)
+  canvas.style.display = 'block';
+  hud.style.display = 'block';
+  backToMenuBtn.style.display = 'block';
 
-  // Create camera
-  const camObj = createCamera();
-  camera = camObj;
-  camObj.update(player.x, player.y, 0, MAX_SPEED, 1); // snap to player immediately
-  camera.state.x = player.x;
-  camera.state.y = player.y;
-
-  // Init input — disable built-in touch controls if joystick is available
-  const onTouch = isTouchDevice();
-  initInput(canvas, (s) => { input = s; }, { disableTouch: onTouch });
-
-  // Init joystick on touch devices
-  if (onTouch) {
-    joystick = createJoystick(canvas, (j: JoystickInput) => {
-      // Merge joystick input: joystick throttle/steer overrides keyboard
-      input = { throttle: j.throttle, steer: j.steer };
-    });
-  }
+  // Reset simulation state
+  initSimulation();
 
   // FPS tracking
   let fpsFrameCount = 0;
   let fpsAccum = 0;
   let lastTime = 0;
 
-  // Start game loop
-  startLoop(
+  stopGameLoop = startLoop(
     (dt) => {
       simulate(dt);
     },
@@ -220,6 +200,101 @@ async function main(): Promise<void> {
       }
     }
   );
+}
+
+function stopGame(): void {
+  if (stopGameLoop) {
+    stopGameLoop();
+    stopGameLoop = null;
+  }
+  gameRunning = false;
+
+  // Clean up input
+  destroyInput?.();
+  destroyInput = null;
+
+  // Clean up joystick
+  if (joystick) {
+    joystick.destroy();
+    joystick = null;
+  }
+
+  canvas.style.display = 'none';
+  hud.style.display = 'none';
+  backToMenuBtn.style.display = 'none';
+}
+
+function initSimulation(): void {
+  // Create player car at center of field
+  player = createCar({
+    startX: (FIELD_COLS / 2) * TILE_SIZE,
+    startY: (FIELD_ROWS / 2) * TILE_SIZE,
+    startHeading: 0,
+    halfWidth: spriteBounds?.halfWidth,
+    halfLength: spriteBounds?.halfLength,
+  });
+
+  // Create camera
+  const camObj = createCamera();
+  camera = camObj;
+  camObj.update(player.x, player.y, 0, MAX_SPEED, 1);
+  camera.state.x = player.x;
+  camera.state.y = player.y;
+
+  // Init input — disable built-in touch controls if joystick is available
+  const onTouch = isTouchDevice();
+  destroyInput = initInput(canvas, (s) => { input = s; }, { disableTouch: onTouch });
+
+  // Init joystick on touch devices
+  if (onTouch) {
+    joystick = createJoystick(canvas, (j: JoystickInput) => {
+      input = { throttle: j.throttle, steer: j.steer };
+    });
+  }
+}
+
+let spriteBounds: { halfWidth: number; halfLength: number } | null = null;
+let destroyInput: (() => void) | null = null;
+
+async function main(): Promise<void> {
+  resize();
+
+  // Preload sprites
+  await preloadSprites([PLAYER_EMOJI]);
+
+  // Compute hitbox from actual sprite content
+  spriteBounds = getSpriteBounds(PLAYER_EMOJI);
+
+  // Start with canvas hidden (only shown during sandbox)
+  canvas.style.display = 'none';
+  hud.style.display = 'none';
+
+  // Init screen state machine
+  const screensContainer = document.getElementById('screens')!;
+  initScreens(screensContainer, (screen: Screen) => {
+    if (screen.kind === 'sandbox') {
+      startGame();
+    } else {
+      stopGame();
+    }
+  });
+
+  // Escape key or back button → return to menu
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape' && getScreen().kind === 'sandbox') {
+      navigate({ kind: 'menu' });
+    }
+  });
+  backToMenuBtn.addEventListener('click', () => {
+    if (getScreen().kind === 'sandbox') {
+      navigate({ kind: 'menu' });
+    }
+  });
+
+  // If we're opening directly in sandbox (e.g. from a query param), start game
+  if (getScreen().kind === 'sandbox') {
+    startGame();
+  }
 }
 
 main().catch(console.error);
