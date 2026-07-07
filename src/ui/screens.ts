@@ -3,7 +3,7 @@
  * Uses HTML overlays for menus and delegates to the game loop for racing.
  */
 
-import { listTracks, loadTrack } from '../tracks/loader';
+import { listTracks } from '../tracks/loader';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -170,7 +170,6 @@ function showOnly(id: string | null): void {
 // ─── Navigation ─────────────────────────────────────────────────────
 
 export function navigate(screen: Screen): void {
-  const prev = currentScreen;
   currentScreen = screen;
 
   switch (screen.kind) {

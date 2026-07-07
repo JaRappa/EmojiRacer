@@ -13,7 +13,7 @@ import { drawMinimap } from './ui/minimap';
 import { createJoystick, isTouchDevice, JoystickHandle, JoystickInput } from './ui/joystick';
 import { initScreens, getScreen, Screen, navigate } from './ui/screens';
 import { loadTrack } from './tracks/loader';
-import { TrackData, TileDef } from './tracks/schema';
+import { TrackData } from './tracks/schema';
 import { collectTrackEmojis } from './tracks/schema';
 
 // ─── Globals ────────────────────────────────────────────────────────
