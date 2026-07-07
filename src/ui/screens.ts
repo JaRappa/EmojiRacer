@@ -1,14 +1,16 @@
 /**
- * Screen state machine — menu / track select / sandbox / options.
- * Uses HTML overlays for menus and delegates to the game loop for sandbox.
+ * Screen state machine — menu / track select / race / options.
+ * Uses HTML overlays for menus and delegates to the game loop for racing.
  */
+
+import { listTracks, loadTrack } from '../tracks/loader';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
 export type Screen =
   | { kind: 'menu' }
   | { kind: 'trackSelect' }
-  | { kind: 'sandbox' }
+  | { kind: 'race'; trackId: string }
   | { kind: 'options' };
 
 export type TrackEntry = {
@@ -23,14 +25,14 @@ type ScreenChangeCallback = (screen: Screen) => void;
 // ─── Globals ───────────────────────────────────────────────────────
 
 /** Available tracks for the track selection screen. */
-const TRACKS: TrackEntry[] = [
-  {
-    id: 'sandbox',
-    name: 'Sandbox Track',
-    description: 'Open field with border walls — free drive.',
-    emoji: '🏟️',
-  },
-];
+function getTrackEntries(): TrackEntry[] {
+  return listTracks().map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    emoji: t.tileset['R']?.emoji ?? '🏁',
+  }));
+}
 
 let currentScreen: Screen = { kind: 'menu' };
 let onScreenChange: ScreenChangeCallback | null = null;
@@ -69,7 +71,13 @@ function buildMenu(): HTMLElement {
   btnTracks.addEventListener('click', () => navigate({ kind: 'trackSelect' }));
 
   const btnSandbox = ce('button', 'menu-btn', '🏎️ Sandbox');
-  btnSandbox.addEventListener('click', () => navigate({ kind: 'sandbox' }));
+  btnSandbox.addEventListener('click', () => {
+    // Launch the first available track
+    const tracks = getTrackEntries();
+    if (tracks.length > 0) {
+      navigate({ kind: 'race', trackId: tracks[0].id });
+    }
+  });
 
   const btnOptions = ce('button', 'menu-btn', '⚙️ Options');
   btnOptions.addEventListener('click', () => navigate({ kind: 'options' }));
@@ -99,11 +107,10 @@ function buildTrackSelect(): HTMLElement {
 
   const list = ce('div', 'track-list');
 
-  for (const track of TRACKS) {
+  for (const track of getTrackEntries()) {
     const card = ce('div', 'track-card');
     card.addEventListener('click', () => {
-      // For now, all tracks launch sandbox
-      navigate({ kind: 'sandbox' });
+      navigate({ kind: 'race', trackId: track.id });
     });
 
     const emoji = ce('span', 'track-emoji', track.emoji);
@@ -176,7 +183,7 @@ export function navigate(screen: Screen): void {
     case 'options':
       showOnly('options-screen');
       break;
-    case 'sandbox':
+    case 'race':
       // Hide all menu overlays, show game canvas
       showOnly(null);
       break;
@@ -212,8 +219,4 @@ export function initScreens(
 
 export function getScreen(): Screen {
   return currentScreen;
-}
-
-export function getTracks(): TrackEntry[] {
-  return TRACKS;
 }

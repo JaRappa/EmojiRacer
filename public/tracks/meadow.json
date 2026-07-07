@@ -1,0 +1,52 @@
+{
+  "id": "meadow",
+  "name": "Meadow Loop",
+  "description": "A wide, forgiving loop through the meadows. Great for learning the ropes.",
+  "tileSize": 64,
+  "laps": 3,
+  "grid": [
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    "TRRRRRRRRRRRRRRRRRRRRRRRRRRRRT",
+    "TRGGGGGGGGGGGGGGGGGGGGGGGGGGRT",
+    "TRGGGGGGGGGGGGGGGGGGGGGGGGGGRT",
+    "TRRRRGGGGGGGGGGGGGGGGGGGGRRRRT",
+    "TRGGRGGGGGGGGGGGGGGGGGGGGRGGRT",
+    "TRGGRGGGGGGGGGGGGGGGGGGGGRGGRT",
+    "TRGGRRRRRGGGGGGGGGGGRRRRRRGGRT",
+    "TRGGGGGGRGGGGGGGGGGGRGGGGGRGGT",
+    "TRGGGGGGRGGGGGGGGGGGRGGGGGRGGT",
+    "TRRRRRRRRGGGGGGGGGGGRRRRRRRRRT",
+    "TRGGGGGGGRRRGGGGGGRRRGGGGGGRRT",
+    "TRGGGGGGGRGGRGGGGGRGGRGGGGGRRT",
+    "TRGGGGGGGRGGRGGGGGRGGRGGGGGRRT",
+    "TRRRRRRRRRGGRRRRRRRGGRRRRRRRRT",
+    "TRGGGGGGGGGGGGGGGGGGGGGGGGGGRT",
+    "TRGGGGGGGGGGGGGGGGGGGGGGGGGGRT",
+    "TRGGGGGGGGGGGGGGGGGGGGGGGGGGRT",
+    "TRRRRRRRRRRRRRRRRRRRRRRRRRRRRT",
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+  ],
+  "tileset": {
+    "R": { "emoji": "🛣️", "surface": "road" },
+    "G": { "emoji": "🌱", "surface": "offroad" },
+    "T": { "emoji": "🌴", "surface": "wall", "canopy": true }
+  },
+  "waypoints": [
+    [2.5, 1.5], [14.5, 1.5], [27.5, 1.5],
+    [27.5, 9.5], [14.5, 9.5],
+    [14.5, 14.5], [27.5, 14.5],
+    [27.5, 18.5], [14.5, 18.5], [2.5, 18.5],
+    [2.5, 14.5], [8.5, 14.5],
+    [8.5, 9.5], [2.5, 9.5]
+  ],
+  "checkpoints": [
+    { "a": [1, 0], "b": [1, 1] },
+    { "a": [0, 10], "b": [1, 10] },
+    { "a": [0, 14], "b": [1, 14] },
+    { "a": [1, 19], "b": [1, 18] }
+  ],
+  "startLine": { "a": [1, 0], "b": [1, 1] },
+  "gridPositions": [
+    [2.5, 18.3], [2.5, 17.7], [2.0, 18.3], [2.0, 17.7]
+  ]
+}

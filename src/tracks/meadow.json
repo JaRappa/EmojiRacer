@@ -1,0 +1,52 @@
+{
+  "id": "meadow",
+  "name": "Meadow Loop",
+  "description": "A simple oval circuit with a checkerboard center island. Great for learning.",
+  "tileSize": 64,
+  "laps": 3,
+  "grid": [
+    "ABABABABABABABABABAB",
+    "BGGGGGGGGGGGGGGGGGGA",
+    "AGRRRRRRRRRRRRRRRRGB",
+    "BGRRRRRRRRRRRRRRRRGA",
+    "AGRRGGGGGGGGGGGGRRGB",
+    "BGRRGABABABABABGRRGA",
+    "AGRRGBGGGGGGGGAGRRGB",
+    "BGRRGAGGGGGGGGBGRRGA",
+    "AGRRGBGGGGGGGGAGRRGB",
+    "BGRRGAGGGGGGGGBGSSGA",
+    "AGRRGBGGGGGGGGAGRRGB",
+    "BGRRGAGGGGGGGGBGRRGA",
+    "AGRRGBGGGGGGGGAGRRGB",
+    "BGRRGAGGGGGGGGBGRRGA",
+    "AGRRGBABABABABAGRRGB",
+    "BGRRGGGGGGGGGGGGRRGA",
+    "AGRRRRRRRRRRRRRRRRGB",
+    "BGRRRRRRRRRRRRRRRRGA",
+    "AGGGGGGGGGGGGGGGGGGB",
+    "BABABABABABABABABABA"
+  ],
+  "tileset": {
+    "A": { "emoji": "🟥", "surface": "wall" },
+    "B": { "emoji": "⬜", "surface": "wall" },
+    "R": { "emoji": "⬛", "surface": "road" },
+    "G": { "emoji": "🟫", "surface": "offroad" },
+    "S": { "emoji": "🟩", "surface": "road" }
+  },
+  "waypoints": [
+    [17.0, 9.0], [17.0, 11.0], [17.0, 13.0], [17.0, 15.5],
+    [14.0, 16.5], [10.0, 16.5], [6.0, 16.5],
+    [3.0, 15.5], [3.0, 13.0], [3.0, 10.0], [3.0, 7.0], [3.0, 4.0],
+    [6.0, 2.5], [10.0, 2.5], [14.0, 2.5],
+    [17.0, 4.0]
+  ],
+  "checkpoints": [
+    { "a": [2.5, 3.0], "b": [5.5, 3.0] },
+    { "a": [2.5, 16.0], "b": [5.5, 16.0] }
+  ],
+  "startLine": { "a": [17.0, 8.0], "b": [17.0, 10.0] },
+  "gridPositions": [
+    [16.6, 8.3], [16.6, 8.7],
+    [17.3, 8.3], [17.3, 8.7]
+  ]
+}

@@ -1,17 +1,20 @@
 /**
  * Emoji Racer — bootstrap & game runner.
- * Phase 1: Menu system + sandbox free-drive.
+ * Phase 1: Menu system + track loading & emoji tile rendering.
  */
 
 import { startLoop } from './engine/loop';
 import { initInput, InputState } from './engine/input';
 import { applyCamera, removeCamera, createCamera, CameraState } from './engine/camera';
 import { drawSprite, preloadSprites, getSpriteBounds } from './engine/sprites';
-import { createCar, simulateCar, resolveWallCollision, CarState } from './game/car';
-import { PLAYER_EMOJI, MAX_SPEED, EMOJI_SIZE, TILE_SIZE, COLOR_GRASS, COLOR_ROAD, COLOR_WALL } from './game/constants';
+import { createCar, simulateCar, resolveWallCollision, isPointOnRoad, CarState } from './game/car';
+import { PLAYER_EMOJI, MAX_SPEED, EMOJI_SIZE, TILE_SIZE, COLOR_GRASS } from './game/constants';
 import { drawMinimap } from './ui/minimap';
 import { createJoystick, isTouchDevice, JoystickHandle, JoystickInput } from './ui/joystick';
 import { initScreens, getScreen, Screen, navigate } from './ui/screens';
+import { loadTrack } from './tracks/loader';
+import { TrackData, TileDef } from './tracks/schema';
+import { collectTrackEmojis } from './tracks/schema';
 
 // ─── Globals ────────────────────────────────────────────────────────
 const canvas = document.getElementById('game') as HTMLCanvasElement;
@@ -27,30 +30,42 @@ let joystick: JoystickHandle | null = null;
 // FPS tracking
 let currentFps = 0;
 
-// Dummy grid — all road for Phase 0
-const FIELD_ROWS = 20;
-const FIELD_COLS = 30;
-const grid: string[][] = [];
-for (let r = 0; r < FIELD_ROWS; r++) {
-  grid[r] = [];
-  for (let c = 0; c < FIELD_COLS; c++) {
-    // Border walls
-    if (r === 0 || r === FIELD_ROWS - 1 || c === 0 || c === FIELD_COLS - 1) {
-      grid[r][c] = 'W';
-    } else {
-      grid[r][c] = 'R'; // all road
+// ─── Track state (loaded per race) ──────────────────────────────────
+let track: TrackData;
+let grid: string[][] = [];
+let roadChars = new Set<string>();
+let wallChars = new Set<string>();
+let canopyChars = new Set<string>();
+let tileEmoji: Record<string, string> = {};
+let tileColor: Record<string, string> = {};
+
+function loadTrackState(id: string): void {
+  track = loadTrack(id);
+
+  grid = track.grid.map((row) => [...row]);
+
+  roadChars.clear();
+  wallChars.clear();
+  canopyChars.clear();
+  tileEmoji = {};
+  tileColor = {};
+
+  for (const [code, def] of Object.entries(track.tileset)) {
+    if (def.emoji) {
+      tileEmoji[code] = def.emoji;
     }
+    if (def.surface === 'road') {
+      roadChars.add(code);
+      tileColor[code] = '#555555';
+    } else if (def.surface === 'offroad') {
+      tileColor[code] = '#8B6914';
+    } else if (def.surface === 'wall') {
+      wallChars.add(code);
+      tileColor[code] = '#cc3333';
+    }
+    if (def.canopy) canopyChars.add(code);
   }
 }
-
-const wallChars = new Set(['W']);
-
-// Tile → color mapping for minimap
-const tileColors: Record<string, string> = {
-  R: COLOR_ROAD,
-  G: COLOR_GRASS,
-  W: COLOR_WALL,
-};
 
 // ─── Resize ─────────────────────────────────────────────────────────
 function resize(): void {
@@ -72,8 +87,8 @@ function simulate(dt: number): void {
   player.steerInput = input.steer;
   player.throttleInput = input.throttle;
 
-  // Determine surface
-  const onRoad = true; // Phase 0: all road
+  // Determine surface from actual track tile
+  const onRoad = isPointOnRoad(player.x, player.y, grid, roadChars);
 
   // Simulate physics
   simulateCar(player, dt, onRoad);
@@ -86,32 +101,75 @@ function simulate(dt: number): void {
 }
 
 // ─── Rendering ──────────────────────────────────────────────────────
-function drawGrid(): void {
-  const cam = camera.state;
+
+function drawTileLayer(camObj: CameraState): void {
+  const cam = camObj;
   const viewW = canvas.width / (window.devicePixelRatio || 1);
   const viewH = canvas.height / (window.devicePixelRatio || 1);
 
-  // Visible tile range
+  const rows = grid.length;
+  const cols = grid[0]?.length ?? 0;
+  if (rows === 0 || cols === 0) return;
+
   const halfViewW = viewW / cam.zoom / 2;
   const halfViewH = viewH / cam.zoom / 2;
   const minCol = Math.max(0, Math.floor((cam.x - halfViewW) / TILE_SIZE));
-  const maxCol = Math.min(FIELD_COLS - 1, Math.ceil((cam.x + halfViewW) / TILE_SIZE));
+  const maxCol = Math.min(cols - 1, Math.ceil((cam.x + halfViewW) / TILE_SIZE));
   const minRow = Math.max(0, Math.floor((cam.y - halfViewH) / TILE_SIZE));
-  const maxRow = Math.min(FIELD_ROWS - 1, Math.ceil((cam.y + halfViewH) / TILE_SIZE));
+  const maxRow = Math.min(rows - 1, Math.ceil((cam.y + halfViewH) / TILE_SIZE));
 
   for (let row = minRow; row <= maxRow; row++) {
     for (let col = minCol; col <= maxCol; col++) {
-      const tile = grid[row]?.[col];
+      const code = grid[row]?.[col];
+      if (!code) continue;
 
-      // Fill tile
-      if (tile === 'W') {
-        ctx.fillStyle = COLOR_WALL;
-      } else {
-        ctx.fillStyle = COLOR_ROAD;
+      const emoji = tileEmoji[code];
+      const color = tileColor[code];
+      const px = col * TILE_SIZE + TILE_SIZE / 2;
+      const py = row * TILE_SIZE + TILE_SIZE / 2;
+
+      if (emoji) {
+        // Draw emoji sprite centered on tile (no rotation)
+        drawSprite(ctx, emoji, px, py, 0, TILE_SIZE);
+      } else if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
-      ctx.fillRect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+}
 
-      // No emoji rendering in Phase 0 for tiles — simple colored grid
+function drawCanopyLayer(camObj: CameraState): void {
+  if (canopyChars.size === 0) return;
+
+  const cam = camObj;
+  const viewW = canvas.width / (window.devicePixelRatio || 1);
+  const viewH = canvas.height / (window.devicePixelRatio || 1);
+
+  const rows = grid.length;
+  const cols = grid[0]?.length ?? 0;
+  if (rows === 0 || cols === 0) return;
+
+  const halfViewW = viewW / cam.zoom / 2;
+  const halfViewH = viewH / cam.zoom / 2;
+  const minCol = Math.max(0, Math.floor((cam.x - halfViewW) / TILE_SIZE));
+  const maxCol = Math.min(cols - 1, Math.ceil((cam.x + halfViewW) / TILE_SIZE));
+  const minRow = Math.max(0, Math.floor((cam.y - halfViewH) / TILE_SIZE));
+  const maxRow = Math.min(rows - 1, Math.ceil((cam.y + halfViewH) / TILE_SIZE));
+
+  for (let row = minRow; row <= maxRow; row++) {
+    for (let col = minCol; col <= maxCol; col++) {
+      const code = grid[row]?.[col];
+      if (!code || !canopyChars.has(code)) continue;
+
+      const emoji = tileEmoji[code];
+      if (!emoji) continue;
+
+      const px = col * TILE_SIZE + TILE_SIZE / 2;
+      const py = row * TILE_SIZE + TILE_SIZE / 2;
+
+      // Slightly larger and offset for canopy effect
+      drawSprite(ctx, emoji, px, py - 4, 0, TILE_SIZE);
     }
   }
 }
@@ -130,17 +188,20 @@ function render(_alpha: number): void {
   // Camera transform
   applyCamera(ctx, camera.state, w, h);
 
-  // Draw track
-  drawGrid();
+  // Layer 1: surface tiles (road, grass, walls)
+  drawTileLayer(camera.state);
 
-  // Car
+  // Layer 3: car (with shadow would be layer 2, added in Phase 4)
   drawSprite(ctx, PLAYER_EMOJI, player.x, player.y, player.heading, EMOJI_SIZE);
+
+  // Layer 6: canopy tiles drawn above cars
+  drawCanopyLayer(camera.state);
 
   removeCamera(ctx);
 
   // Draw minimap in screen-space (top-right corner)
   const dpr2 = window.devicePixelRatio || 1;
-  drawMinimap(ctx, grid, tileColors, player, canvas.width / dpr2);
+  drawMinimap(ctx, grid, tileColor, player, canvas.width / dpr2);
 
   // Draw virtual joystick (touch devices only)
   if (joystick) {
@@ -159,47 +220,55 @@ function updateHud(): void {
 let stopGameLoop: (() => void) | null = null;
 let gameRunning = false;
 
-function startGame(): void {
+function startGame(trackId: string): void {
   if (gameRunning) return;
-  gameRunning = true;
 
-  // Show canvas and back button, hide HUD (will update from simulation)
-  canvas.style.display = 'block';
-  hud.style.display = 'block';
-  backToMenuBtn.style.display = 'block';
+  // Load track state
+  loadTrackState(trackId);
 
-  // Reset simulation state
-  initSimulation();
+  // Preload track tile emojis before starting
+  const emojis = collectTrackEmojis(track);
+  preloadSprites([PLAYER_EMOJI, ...emojis]).then(() => {
+    if (!gameRunning && getScreen().kind !== 'race') return; // user already navigated away
 
-  // FPS tracking
-  let fpsFrameCount = 0;
-  let fpsAccum = 0;
-  let lastTime = 0;
+    gameRunning = true;
 
-  stopGameLoop = startLoop(
-    (dt) => {
-      simulate(dt);
-    },
-    (_alpha) => {
-      // Track FPS with wall-clock time
-      const now = performance.now() / 1000;
-      if (lastTime > 0) {
-        fpsAccum += now - lastTime;
-        fpsFrameCount++;
+    // Show canvas and back button
+    canvas.style.display = 'block';
+    hud.style.display = 'block';
+    backToMenuBtn.style.display = 'block';
+
+    // Init simulation state
+    initSimulation();
+
+    // FPS tracking
+    let fpsFrameCount = 0;
+    let fpsAccum = 0;
+    let lastTime = 0;
+
+    stopGameLoop = startLoop(
+      (dt) => {
+        simulate(dt);
+      },
+      (_alpha) => {
+        const now = performance.now() / 1000;
+        if (lastTime > 0) {
+          fpsAccum += now - lastTime;
+          fpsFrameCount++;
+        }
+        lastTime = now;
+
+        render(_alpha);
+
+        if (fpsAccum >= 0.5) {
+          currentFps = Math.round(fpsFrameCount / fpsAccum);
+          fpsFrameCount = 0;
+          fpsAccum = 0;
+          updateHud();
+        }
       }
-      lastTime = now;
-
-      render(_alpha);
-
-      // Update FPS at ~2 Hz
-      if (fpsAccum >= 0.5) {
-        currentFps = Math.round(fpsFrameCount / fpsAccum);
-        fpsFrameCount = 0;
-        fpsAccum = 0;
-        updateHud();
-      }
-    }
-  );
+    );
+  });
 }
 
 function stopGame(): void {
@@ -225,11 +294,23 @@ function stopGame(): void {
 }
 
 function initSimulation(): void {
-  // Create player car at center of field
+  // Use track's first grid position as player starting spot
+  const startPos = track.gridPositions[0];
+  const startX = startPos[0] * TILE_SIZE;
+  const startY = startPos[1] * TILE_SIZE;
+
+  // Determine starting heading from the first two waypoints
+  const wp0 = track.waypoints[0];
+  const wp1 = track.waypoints[1];
+  const startHeading = Math.atan2(
+    (wp1[1] - wp0[1]) * TILE_SIZE,
+    (wp1[0] - wp0[0]) * TILE_SIZE,
+  );
+
   player = createCar({
-    startX: (FIELD_COLS / 2) * TILE_SIZE,
-    startY: (FIELD_ROWS / 2) * TILE_SIZE,
-    startHeading: 0,
+    startX,
+    startY,
+    startHeading,
     halfWidth: spriteBounds?.halfWidth,
     halfLength: spriteBounds?.halfLength,
   });
@@ -241,7 +322,7 @@ function initSimulation(): void {
   camera.state.x = player.x;
   camera.state.y = player.y;
 
-  // Init input — disable built-in touch controls if joystick is available
+  // Init input
   const onTouch = isTouchDevice();
   destroyInput = initInput(canvas, (s) => { input = s; }, { disableTouch: onTouch });
 
@@ -272,8 +353,8 @@ async function main(): Promise<void> {
   // Init screen state machine
   const screensContainer = document.getElementById('screens')!;
   initScreens(screensContainer, (screen: Screen) => {
-    if (screen.kind === 'sandbox') {
-      startGame();
+    if (screen.kind === 'race') {
+      startGame(screen.trackId);
     } else {
       stopGame();
     }
@@ -281,19 +362,20 @@ async function main(): Promise<void> {
 
   // Escape key or back button → return to menu
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && getScreen().kind === 'sandbox') {
+    if (e.code === 'Escape' && getScreen().kind === 'race') {
       navigate({ kind: 'menu' });
     }
   });
   backToMenuBtn.addEventListener('click', () => {
-    if (getScreen().kind === 'sandbox') {
+    if (getScreen().kind === 'race') {
       navigate({ kind: 'menu' });
     }
   });
 
-  // If we're opening directly in sandbox (e.g. from a query param), start game
-  if (getScreen().kind === 'sandbox') {
-    startGame();
+  // If opening directly to race (query param in future), start game
+  const screen = getScreen();
+  if (screen.kind === 'race') {
+    startGame(screen.trackId);
   }
 }
 
